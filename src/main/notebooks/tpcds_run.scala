@@ -11,11 +11,10 @@ val scaleFactor = "1"
 val useDecimal = true
 // If false, string type will be used instead of date.
 val useDate = true
+// If true, rows with nulls in partition key will be thrown away.
+val filterNull = false
 // name of database to be used.
-val databaseName = s"tpcds_sf${scaleFactor}" +
-  s"""_${if (useDecimal) "with" else "no"}decimal""" +
-  s"""_${if (useDate) "with" else "no"}date""" +
-  s"""_${if (filterNull) "no" else "with"}nulls"""
+val databaseName = s"tpcds_sf${scaleFactor}" + s"""_${if (useDecimal) "with" else "no"}decimal""" + s"""_${if (useDate) "with" else "no"}date""" + s"""_${if (filterNull) "no" else "with"}nulls"""
 
 val iterations = 2 // how many times to run the whole set of queries.
 
@@ -26,7 +25,7 @@ val query_filter = Seq() // Seq() == all queries
 val randomizeQueries = false // run queries in a random order. Recommended for parallel runs.
 
 // detailed results will be written as JSON to this location.
-val resultLocation = "/mnt/performance-datasets/tpcds/results"
+val resultLocation = "/tmp/performance-datasets/tpcds/results"
 
 // COMMAND ----------
 
@@ -43,7 +42,7 @@ sql(s"use $databaseName")
 
 import com.databricks.spark.sql.perf.tpcds.TPCDS
 
-val tpcds = new TPCDS (sqlContext = sqlContext)
+val tpcds = new TPCDS (sqlContext = spark.sqlContext)
 def queries = {
   val filtered_queries = query_filter match {
     case Seq() => tpcds.tpcds2_4Queries

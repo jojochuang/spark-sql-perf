@@ -3,7 +3,7 @@
 val benchmarks = Seq("TPCDS", "TPCH") // Options: TCPDS", "TPCH"
 val scaleFactors = Seq("1", "10", "100", "1000", "10000") // "1", "10", "100", "1000", "10000" list of scale factors to generate and import
 
-val baseLocation = s"s3a://mybucket" // S3 bucket, blob, or local root path
+val baseLocation = s"hdfs://vb1525.halxg.cloudera.com/tmp/tpc-ds/" // S3 bucket, blob, or local root path
 val baseDatagenFolder = "/tmp"  // usually /tmp if enough space is available for datagen files
 
 // Output file formats
@@ -15,7 +15,7 @@ val overwrite = false //if to delete existing files (doesn't check if results ar
 val createTableStats = true
 val createColumnStats = true
 
-val workers: Int = spark.conf.get("spark.databricks.clusterUsageTags.clusterTargetWorkers").toInt //number of nodes, assumes one executor per node
+val workers: Int = 9 // spark.conf.get("spark.databricks.clusterUsageTags.clusterTargetWorkers").toInt //number of nodes, assumes one executor per node
 val cores: Int = Runtime.getRuntime.availableProcessors.toInt //number of CPU-cores
 
 val dbSuffix = "" // set only if creating multiple DBs or source file folders with different settings, use a leading _
@@ -63,7 +63,7 @@ def waitForWorkers(requiredWorkers: Int, tries: Int) : Unit = {
   }
   throw new Exception(s"Timed out waiting for workers to be ready after ${tries}s.")
 }
-waitForWorkers(targetWorkers, 3600) //wait up to an hour
+//waitForWorkers(targetWorkers, 3600) //wait up to an hour
 
 // COMMAND ----------
 
@@ -110,8 +110,7 @@ def installDSDGEN(url: String = "https://github.com/databricks/tpcds-kit.git", u
   Seq("mkdir", "-p", baseFolder).!
   val pw = new PrintWriter(new File(s"${baseFolder}/dsdgen_$i.sh" ))
   pw.write(s"""
-sudo apt-get update
-sudo apt-get -y --force-yes install gcc make flex bison byacc git
+sudo yum install -y gcc make flex bison byacc git
 rm -rf ${baseFolder}/dsdgen
 rm -rf ${baseFolder}/dsdgen_install_$i
 mkdir ${baseFolder}/dsdgen_install_$i
@@ -132,10 +131,10 @@ echo "OK"
 // COMMAND ----------
 
 // install (build) the data generators in all nodes
-val res = spark.range(0, workers, 1, workers).map(worker => benchmarks.map{
-    case "TPCDS" => s"TPCDS worker $worker\n" + installDSDGEN(baseFolder = baseDatagenFolder)(worker)
-    case "TPCH" => s"TPCH worker $worker\n" + installDBGEN(baseFolder = baseDatagenFolder)(worker)
-  }).collect()
+// val res = spark.range(0, workers, 1, workers).map(worker => benchmarks.map{
+//    case "TPCDS" => s"TPCDS worker $worker\n" + installDSDGEN(baseFolder = baseDatagenFolder)(worker)
+//    case "TPCH" => s"TPCH worker $worker\n" + installDBGEN(baseFolder = baseDatagenFolder)(worker)
+//  }).collect()
 
 // COMMAND ----------
 
