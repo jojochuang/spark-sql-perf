@@ -1,3 +1,56 @@
+package com.databricks.spark.sql.perf
+
+import java.io.File
+import org.apache.spark.sql.{SQLContext, SparkSession}
+import org.apache.spark.sql.functions._
+import org.apache.spark.{SparkContext, SparkConf}
+
+object tpcds_datagen {
+  def main(args: Array[String]): Unit = {
+    val parser = new scopt.OptionParser[RunConfig]("spark-sql-perf") {
+      head("spark-sql-perf", "0.2.0")
+      opt[String]('m', "master")
+        .action { (x, c) => c.copy(master = x) }
+        .text("the Spark master to use, default to local[*]")
+      opt[String]('b', "benchmark")
+        .action { (x, c) => c.copy(benchmarkName = x) }
+        .text("the name of the benchmark to run")
+        .required()
+      opt[String]('f', "filter")
+        .action((x, c) => c.copy(filter = Some(x)))
+        .text("a filter on the name of the queries to run")
+      opt[Int]('i', "iterations")
+        .action((x, c) => c.copy(iterations = x))
+        .text("the number of iterations to run")
+      opt[Long]('c', "compare")
+          .action((x, c) => c.copy(baseline = Some(x)))
+          .text("the timestamp of the baseline experiment to compare with")
+      help("help")
+        .text("prints this usage text")
+    }
+
+    parser.parse(args, RunConfig()) match {
+      case Some(config) =>
+        run(config)
+      case None =>
+        System.exit(1)
+    }
+  }
+
+  def run(config: RunConfig): Unit = {
+    val conf = new SparkConf()
+      .setMaster(config.master)
+      .setAppName(getClass.getName)
+
+    val sparkSession = SparkSession.builder.config(conf).getOrCreate()
+    val sc = sparkSession.sparkContext
+    val sqlContext = sparkSession.sqlContext
+    //val spark = SparkSession(sc)
+    import sqlContext.implicits._
+
+    sqlContext.setConf("spark.sql.perf.results",
+      new File("performance").toURI.toString)
+
 // Databricks notebook source
 // MAGIC %md
 // MAGIC This notebook generates the TPCDS data using the spark-sql-perf library.
@@ -107,7 +160,7 @@ SparkHadoopUtil.get.conf.set("parquet.memory.pool.ratio", "0.1")
 // Compress with snappy:
 sqlContext.setConf("spark.sql.parquet.compression.codec", "snappy")
 // TPCDS has around 2000 dates.
-spark.conf.set("spark.sql.shuffle.partitions", "2000")
+sparkSession.conf.set("spark.sql.shuffle.partitions", "2000")
 // Don't write too huge files.
 sqlContext.setConf("spark.sql.files.maxRecordsPerFile", "20000000")
 
@@ -156,12 +209,12 @@ println("Done generating partitioned tables.")
 
 // COMMAND ----------
 
-sql(s"drop database if exists $databaseName cascade")
-sql(s"create database $databaseName")
+sqlContext.sql(s"drop database if exists $databaseName cascade")
+sqlContext.sql(s"create database $databaseName")
 
 // COMMAND ----------
 
-sql(s"use $databaseName")
+sqlContext.sql(s"use $databaseName")
 
 // COMMAND ----------
 
@@ -175,3 +228,5 @@ tables.createExternalTables(rootDir, format, databaseName, overwrite = true, dis
 // COMMAND ----------
 
 tables.analyzeTables(databaseName, analyzeColumns = true)
+  }
+}
